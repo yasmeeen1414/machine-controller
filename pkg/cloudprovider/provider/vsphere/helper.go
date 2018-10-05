@@ -99,7 +99,7 @@ func createLinkClonedVM(vmName, vmImage, datacenter, clusterName, folder string,
 		var mvm mo.VirtualMachine
 		err = templateVM.Properties(ctx, templateVM.Reference(), []string{"config", "config.vAppConfig", "config.vAppConfig.property"}, &mvm)
 		if err != nil {
-			return err
+			return fmt.Errorf("Error getting vm properties: %v", err)
 		}
 
 		var propertySpecs []types.VAppPropertySpec
@@ -150,10 +150,81 @@ func createLinkClonedVM(vmName, vmImage, datacenter, clusterName, folder string,
 		Snapshot: &snapshotRef,
 	}
 
+	glog.Warningf("calling templateVM.Clone, ctx -> %#v targetVMFolder -> %#v vmname -> %#v cloneSpec: %#v", ctx, targetVMFolder, vmName, cloneSpec)
+
 	// Create a link cloned VM from the template VM's snapshot
 	clonedVMTask, err := templateVM.Clone(ctx, targetVMFolder, vmName, *cloneSpec)
 	if err != nil {
-		return err
+
+		glog.Warningf("error happend, see: %v", err)
+		glog.Warningf("trying again with empty clone spec")
+
+		clonedVMTask, err = templateVM.Clone(ctx, targetVMFolder, vmName, types.VirtualMachineCloneSpec{})
+		if err != nil {
+			return fmt.Errorf("error with empty clone spec: %v", err)
+		}
+
+		glog.Warningln("trying with empty spec worked!")
+
+		glog.Warningln("trying just with snapshot")
+		clonedVMTask, err = templateVM.Clone(ctx, targetVMFolder, vmName, types.VirtualMachineCloneSpec{Snapshot: &snapshotRef})
+		if err != nil {
+			glog.Warningf("just with snapshot doesnt work, see: %v", err)
+		} else {
+			glog.Warningln("yay it worked!")
+		}
+
+		glog.Warningln("trying just with flags")
+		clonedVMTask, err = templateVM.Clone(ctx, targetVMFolder, vmName, types.VirtualMachineCloneSpec{
+			Config: &types.VirtualMachineConfigSpec{
+				Flags: &types.VirtualMachineFlagInfo{
+					DiskUuidEnabled: &diskUUIDEnabled,
+				},
+			},
+		})
+		if err != nil {
+			glog.Warningf("just with flags doesnt work, see: %v", err)
+		} else {
+			glog.Warningln("yay it worked!")
+		}
+
+		glog.Warningln("trying just with cpus")
+		clonedVMTask, err = templateVM.Clone(ctx, targetVMFolder, vmName, types.VirtualMachineCloneSpec{
+			Config: &types.VirtualMachineConfigSpec{
+				NumCPUs: cpus,
+			},
+		})
+		if err != nil {
+			glog.Warningf("just with cpus doesnt work, see: %v", err)
+		} else {
+			glog.Warningln("yay it worked!")
+		}
+
+		glog.Warningln("trying just with cpus")
+		clonedVMTask, err = templateVM.Clone(ctx, targetVMFolder, vmName, types.VirtualMachineCloneSpec{
+			Config: &types.VirtualMachineConfigSpec{
+				MemoryMB: memoryMB,
+			},
+		})
+		if err != nil {
+			glog.Warningf("just with cpus doesnt work, see: %v", err)
+		} else {
+			glog.Warningln("yay it worked!")
+		}
+
+		glog.Warningln("trying just with vapp config")
+		clonedVMTask, err = templateVM.Clone(ctx, targetVMFolder, vmName, types.VirtualMachineCloneSpec{
+			Config: &types.VirtualMachineConfigSpec{
+				VAppConfig: vAppAconfig,
+			},
+		})
+		if err != nil {
+			glog.Warningf("just with vapp doesnt work, see: %v", err)
+		} else {
+			glog.Warningln("yay it worked!")
+		}
+
+		return fmt.Errorf("Error while cloning vm: %v", err)
 	}
 
 	_, err = clonedVMTask.WaitForResult(ctx, nil)
