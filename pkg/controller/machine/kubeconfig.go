@@ -42,6 +42,8 @@ const (
 	tokenSecretKey           string            = "token-secret"
 	expirationKey            string            = "expiration"
 	tokenFormatter           string            = "%s.%s"
+	// Keep this short, userdata is limited
+	contextIdentifier string = "c"
 )
 
 func (r *Reconciler) createBootstrapKubeconfig(name string) (*clientcmdapi.Config, error) {
@@ -72,16 +74,16 @@ func (r *Reconciler) createBootstrapKubeconfig(name string) (*clientcmdapi.Confi
 	}
 	cluster := outConfig.Clusters[clusterContextName].DeepCopy()
 	delete(outConfig.Clusters, clusterContextName)
-	outConfig.Clusters["a"] = cluster
+	outConfig.Clusters[contextIdentifier] = cluster
 
 	outConfig.AuthInfos = map[string]*clientcmdapi.AuthInfo{
-		"a": {
+		contextIdentifier: {
 			Token: token,
 		},
 	}
 
-	outConfig.Contexts = map[string]*clientcmdapi.Context{"a": {Cluster: "a", AuthInfo: "a"}}
-	outConfig.CurrentContext = "a"
+	outConfig.Contexts = map[string]*clientcmdapi.Context{contextIdentifier: {Cluster: contextIdentifier, AuthInfo: contextIdentifier}}
+	outConfig.CurrentContext = contextIdentifier
 
 	return outConfig, nil
 }
